@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>졸음 감지 대시보드</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    .stage { font-size: 2rem; font-weight: bold; }
+    .ok { color: green; } .warn { color: goldenrod; } .danger { color: red; }
+    .metrics { margin-top: 1rem; color: #555; }
+    table { border-collapse: collapse; margin-top: 1.5rem; width: 100%; max-width: 720px; }
+    th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; font-size: 0.9rem; }
+    th { background: #f3f3f3; }
+  </style>
+</head>
+<body>
+  <h1>실시간 운전자 졸음 감지</h1>
+  <div id="stage" class="stage">--</div>
+  <div class="metrics">EAR: <span id="ear">-</span> · Pitch: <span id="pitch">-</span>°</div>
+
+  <!-- TODO: /video MJPEG 스트림 <img> 추가 -->
+
+  <h2>이벤트 로그</h2>
+  <table>
+    <thead>
+      <tr><th>시간</th><th>단계</th><th>EAR</th><th>Pitch</th><th>클립</th></tr>
+    </thead>
+    <tbody id="log-rows">
+      <tr><td colspan="5">로그 없음</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    // /status 폴링으로 단계/지표 갱신 (스켈레톤)
+    async function poll() {
+      try {
+        const r = await fetch("/status");
+        const s = await r.json();
+        const el = document.getElementById("stage");
+        el.textContent = (s.stage || "--").toUpperCase();
+        el.className = "stage " + (s.stage || "");
+        document.getElementById("ear").textContent = s.ear ?? "-";
+        document.getElementById("pitch").textContent = s.pitch ?? "-";
+      } catch (e) { /* 서버 미응답 무시 */ }
+    }
+
+    // /logs 폴링으로 이벤트 로그 테이블 갱신 (최근 20건, 최신순)
+    async function pollLogs() {
+      try {
+        const r = await fetch("/logs");
+        const rows = await r.json();
+        const tbody = document.getElementById("log-rows");
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="5">로그 없음</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.slice(-20).reverse().map(function (e) {
+          const clip = e.clip ? e.clip : "-";
+          return '<tr><td>' + (e.time ?? "-") + '</td>' +
+                 '<td class="' + (e.stage ?? "") + '">' + (e.stage ?? "-") + '</td>' +
+                 '<td>' + (e.ear ?? "-") + '</td>' +
+                 '<td>' + (e.pitch ?? "-") + '</td>' +
+                 '<td>' + clip + '</td></tr>';
+        }).join("");
+      } catch (e) { /* 서버 미응답 무시 */ }
+    }
+
+    setInterval(poll, 500);
+    setInterval(pollLogs, 2000);
+    poll();
+    pollLogs();
+  </script>
+</body>
+</html>

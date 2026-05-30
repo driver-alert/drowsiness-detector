@@ -1,0 +1,44 @@
+# 졸음 감지 시스템 설정
+# 임계값과 핀 번호는 이 파일에서만 관리한다 (코드에 숫자 하드코딩 금지).
+# 아래 값들은 합리적 기본값 — 실제 환경에서 튜닝 필요.
+
+model:
+  task_path: models/face_landmarker.task   # MediaPipe Face Landmarker .task 모델
+
+camera:
+  width: 640
+  height: 480
+  fps: 30
+
+# EAR(Eye Aspect Ratio) 기반 졸음 판단 — 프레임 카운팅
+ear:
+  threshold: 0.21        # 이 값 미만이면 눈 감음으로 간주 (튜닝 대상)
+  warn_frames: 15        # 연속 프레임 수 이상이면 warn (~0.5초 @30fps)
+  danger_frames: 45      # 연속 프레임 수 이상이면 danger (~1.5초 @30fps)
+
+# 고개 숙임(Pitch) 기반 보조 판단
+head_pose:
+  pitch_threshold: 15.0  # degree, 이 값 이상 숙이면 졸음 의심
+
+# 단계별 GPIO 핀 (BCM 번호) — RPi에서만 사용
+gpio:
+  led_green: 17
+  led_yellow: 27
+  led_red: 22
+  buzzer: 23
+
+# danger 단계 이벤트 클립 저장 (mp4 -> .gitignore 처리됨)
+recorder:
+  output_dir: clips
+  pre_seconds: 3         # 이벤트 시점 이전 보관 길이
+  post_seconds: 3        # 이벤트 시점 이후 기록 길이
+
+# 졸음 이벤트 로그 (JSON, 사후 분석용)
+event_log:
+  output_path: logs/events.json
+  log_stages: [ok, warn, danger]   # 기록할 단계. RPi 부하 우려 시 [warn, danger]로 축소
+
+# Flask 모니터링 대시보드
+web:
+  host: 0.0.0.0
+  port: 5000
