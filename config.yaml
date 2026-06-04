@@ -12,7 +12,7 @@ camera:
 
 # EAR(Eye Aspect Ratio) 기반 졸음 판단 — 프레임 카운팅
 ear:
-  threshold: 0.21        # 이 값 미만이면 눈 감음으로 간주 (튜닝 대상)
+  threshold: 0.25        # 이 값 미만이면 눈 감음으로 간주 (측정: 뜬 0.37~0.43, 감은 0.10~0.13)
   warn_frames: 15        # 연속 프레임 수 이상이면 warn (~0.5초 @30fps)
   danger_frames: 45      # 연속 프레임 수 이상이면 danger (~1.5초 @30fps)
 

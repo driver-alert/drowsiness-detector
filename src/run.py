@@ -1,15 +1,16 @@
 """메인 루프 — 전체 흐름을 연결한다.
 
 실행:
-    python -m src.run --source webcam     # PC (웹캠 + 콘솔 경고)
-    python -m src.run --source picamera   # RPi (CSI 카메라 + GPIO 경고)
+    python -m src.run           # Windows: 콘솔 경고 / RPi: GPIO 경고 (자동 감지)
+    python -m src.run --config custom.yaml
 
-카메라/경고 객체는 --source에 따라 주입받는다. 나머지 로직(vision/logic)은
+카메라/경고 객체는 플랫폼에 따라 자동 선택된다. 나머지 로직(vision/logic)은
 하드웨어를 알지 못한다(스펙: 하드웨어 의존 코드 격리).
 """
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 
 
@@ -21,30 +22,22 @@ def load_config(path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-def build_source_and_alert(source: str, cfg: dict):
-    """--source 에 맞는 (카메라, 경고) 객체를 생성해 반환한다.
+def build_source_and_alert(cfg: dict):
+    """플랫폼에 맞는 (카메라, 경고) 객체를 생성해 반환한다.
 
-    PC에서는 GPIO 코드를 호출하지 않는다(webcam -> ConsoleAlert).
+    Windows: ConsoleAlert / RPi(Linux): GpioAlert
     """
-    if source == "webcam":
-        from .camera.webcam import WebcamSource
+    from .camera.webcam import WebcamSource
+    if sys.platform == "win32":
         from .hardware.alert import ConsoleAlert
         return WebcamSource(cfg["camera"]), ConsoleAlert()
-    elif source == "picamera":
-        from .camera.picamera import PiCameraSource
+    else:
         from .hardware.alert import GpioAlert
-        return PiCameraSource(cfg["camera"]), GpioAlert(cfg["gpio"])
-    raise ValueError(f"알 수 없는 source: {source}")
+        return WebcamSource(cfg["camera"]), GpioAlert(cfg["gpio"])
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="실시간 운전자 졸음 감지 시스템")
-    parser.add_argument(
-        "--source",
-        choices=["webcam", "picamera"],
-        required=True,
-        help="프레임 입력 소스 (PC=webcam, RPi=picamera)",
-    )
     parser.add_argument(
         "--config",
         default="config.yaml",
@@ -62,7 +55,7 @@ def main() -> None:
     from .logic.recorder import ClipRecorder
     from .logic.event_log import EventLogger
 
-    camera, alert = build_source_and_alert(args.source, cfg)
+    camera, alert = build_source_and_alert(cfg)
     landmarker = FaceLandmarker(cfg["model"]["task_path"])
     judge = DrowsinessJudge(cfg)
     recorder = ClipRecorder(cfg["recorder"])

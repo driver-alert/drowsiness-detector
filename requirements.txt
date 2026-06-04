@@ -1,6 +1,6 @@
 # 공통 패키지 (PC·RPi 모두). RPi 전용은 requirements-rpi.txt 참고.
 mediapipe>=0.10,<0.11
 opencv-python>=4,<5
-numpy
+numpy<2
 Flask>=3,<4
 PyYAML            # config.yaml 로드용
