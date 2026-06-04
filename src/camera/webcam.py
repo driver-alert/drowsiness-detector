@@ -12,10 +12,12 @@ class WebcamSource:
         """Args:
             cfg: config.yaml 의 camera 설정 (width, height, fps).
         """
+        import sys
         import cv2  # 무거운 import는 메서드 내부 (기존 스타일 유지)
         self.cfg = cfg
-        # 0번 장치 = 기본 웹캠. CAP_DSHOW: Windows에서 오픈 지연 완화
-        self._cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        # CAP_DSHOW: Windows에서 오픈 지연 완화 (Linux/RPi에서는 불필요)
+        backend = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_ANY
+        self._cap = cv2.VideoCapture(0, backend)
         # config.yaml 의 camera 설정을 카메라에 반영
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  cfg["width"])
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg["height"])
