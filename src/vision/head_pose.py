@@ -38,6 +38,8 @@ def estimate_pitch(landmarks, frame_size) -> float:
     dist = np.zeros((4, 1))  # 렌즈 왜곡 무시 (보정값 없음)
     # 3D-2D 대응으로 머리 회전(rvec)·이동(tvec) 추정
     ok, rvec, tvec = cv2.solvePnP(MODEL_3D, pts2d, cam, dist, flags=cv2.SOLVEPNP_ITERATIVE)
+    if not ok:  # 랜드마크 배치가 비정상일 때 수렴 실패 — 크래시 방지
+        return 0.0
     R, _ = cv2.Rodrigues(rvec)  # 회전벡터 → 회전행렬
     pitch = np.degrees(np.arctan2(-R[2, 1], R[2, 2]))  # x축 회전각 추출 → pitch(deg)
     return float(pitch)  # 고개 숙임 = 양수

@@ -18,6 +18,8 @@ class WebcamSource:
         # CAP_DSHOW: Windows에서 오픈 지연 완화 (Linux/RPi에서는 불필요)
         backend = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_ANY
         self._cap = cv2.VideoCapture(0, backend)
+        if not self._cap.isOpened():  # 오픈 실패 시 read()가 None을 반환하며 조용히 종료됨 — 명시적 예외로 대체
+            raise RuntimeError("웹캠 열기 실패 — 카메라 연결을 확인하세요 (장치 0)")
         # config.yaml 의 camera 설정을 카메라에 반영
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  cfg["width"])
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cfg["height"])

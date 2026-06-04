@@ -16,6 +16,8 @@ def _ear_one(landmarks, idx) -> float:
     p = [np.array([landmarks[i].x, landmarks[i].y]) for i in idx]  # 정규화 (x, y)
     vert  = np.linalg.norm(p[1]-p[5]) + np.linalg.norm(p[2]-p[4])  # 세로 두 쌍 합
     horiz = 2.0 * np.linalg.norm(p[0]-p[3])                        # 가로 거리 ×2
+    if horiz < 1e-6:  # 비정상 랜드마크로 가로 거리가 0에 가까울 때 inf/nan 방지
+        return 0.0
     return float(vert / horiz)  # 눈 감을수록 작아짐
 
 
