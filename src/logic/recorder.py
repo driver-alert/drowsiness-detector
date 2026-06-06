@@ -1,27 +1,65 @@
-"""이벤트 영상 클립 저장 — danger 단계 발생 시 최근 프레임을 mp4로 기록.
+"""danger 단계 이벤트 영상 클립 저장.
 
-OpenCV VideoWriter 사용. 무거운 import(cv2)는 메서드 내부에 둔다.
+run.py 사용:
+    recorder.feed(frame)                                 # 매 프레임
+    clip = recorder.save() if stage == "danger" else None
+
+동작: danger가 시작되면 직전 pre_seconds 영상부터 저장을 시작하고,
+danger가 끝난 뒤 post_seconds 만큼 더 기록한 다음 파일을 닫는다.
 """
 from __future__ import annotations
 
+import os
+import time
+from collections import deque
+
+import cv2
+
 
 class ClipRecorder:
-    """롤링 버퍼에 프레임을 쌓아두고, danger 시점 전후를 클립으로 저장한다."""
-
     def __init__(self, cfg: dict):
-        """Args:
-            cfg: config.yaml 의 recorder 설정 (output_dir, pre_seconds, post_seconds).
-        """
-        self.cfg = cfg
-        # TODO: 링 버퍼(collections.deque) 준비, output_dir 생성.
-        raise NotImplementedError("ClipRecorder 초기화 미구현")
+        self.output_dir = cfg.get("output_dir", "clips")
+        self.pre_seconds = float(cfg.get("pre_seconds", 3))
+        self.post_seconds = float(cfg.get("post_seconds", 3))
+        self.fps = 20  # 카메라 fps와 대략 맞춤 (필요시 조정)
 
-    def feed(self, frame):
-        """매 프레임 호출 — 롤링 버퍼에 프레임을 추가한다."""
-        # TODO: deque에 frame append (pre_seconds 분량 유지).
-        raise NotImplementedError("recorder.feed 미구현")
+        os.makedirs(self.output_dir, exist_ok=True)
+        self._pre_buffer = deque(maxlen=int(self.pre_seconds * self.fps))
+        self._writer = None
+        self._path = None
+        self._post_left = 0
 
-    def save(self) -> str:
-        """현재 버퍼 + 이후 post_seconds 프레임을 mp4로 저장하고 경로를 반환한다."""
-        # TODO: cv2.VideoWriter로 output_dir/<timestamp>.mp4 작성.
-        raise NotImplementedError("recorder.save 미구현")
+    def feed(self, frame) -> None:
+        self._pre_buffer.append(frame)
+        if self._writer is not None:
+            self._writer.write(frame)
+            if self._post_left > 0:
+                self._post_left -= 1
+                if self._post_left == 0:
+                    self._finish()
+
+    def save(self):
+        if self._writer is None:
+            self._start(self._pre_buffer[-1])
+            for f in self._pre_buffer:      # 직전 몇 초(pre-roll) 먼저 기록
+                self._writer.write(f)
+            return self._path
+        else:
+            self._post_left = int(self.post_seconds * self.fps)  # 녹화 연장
+            return None
+
+    def _start(self, sample) -> None:
+        h, w = sample.shape[:2]
+        self._path = os.path.join(self.output_dir, time.strftime("danger_%Y%m%d_%H%M%S.mp4"))
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        self._writer = cv2.VideoWriter(self._path, fourcc, self.fps, (w, h))
+        self._post_left = int(self.post_seconds * self.fps)
+
+    def _finish(self) -> None:
+        if self._writer is not None:
+            self._writer.release()
+            self._writer = None
+            self._path = None
+
+    def close(self) -> None:
+        self._finish()
