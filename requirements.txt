@@ -4,3 +4,6 @@ opencv-python>=4,<5
 numpy<2
 Flask>=3,<4
 PyYAML            # config.yaml 로드용
+pyttsx3==2.91     # 오프라인 TTS (각성 산수 문제 음성 출제)
+SpeechRecognition # STT (음성 답변 인식, Google recognizer)
+PyAudio           # 마이크 입력

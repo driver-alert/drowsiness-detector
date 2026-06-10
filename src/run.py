@@ -93,6 +93,7 @@ def main() -> None:
     cfg = load_config(args.config)
 
     # 구성요소 조립: 하드웨어 의존 객체를 메인 루프에 주입한다.
+    from .logic.challenge import ChallengeManager
     from .logic.drowsiness import DrowsinessJudge
     from .logic.event_log import EventLogger
     from .logic.recorder import ClipRecorder
@@ -105,6 +106,7 @@ def main() -> None:
     judge = DrowsinessJudge(cfg)
     recorder = ClipRecorder(cfg["recorder"])
     logger = EventLogger(cfg["event_log"])
+    challenge_manager = ChallengeManager(cfg)
 
     # Flask 대시보드와 공유할 상태.
     state = {"stage": "ok", "ear": None, "pitch": None, "ts": None}
@@ -146,6 +148,8 @@ def main() -> None:
             clip_path = recorder.save() if stage == "danger" else None
             if stage != prev_stage:
                 logger.log(stage, vision, clip=clip_path)
+                if stage == "danger":
+                    challenge_manager.on_danger(vision["ts"])
             prev_stage = stage
 
             state.update(stage=stage, **vision)
