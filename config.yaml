@@ -47,7 +47,8 @@ challenge:
   answer_timeout: 7      # STT 1회 청취 제한 시간(초)
   operand_min: 10        # 산수 피연산자 최소값 (두 자리수 연산)
   operand_max: 49        # 산수 피연산자 최대값
-  tts_rate: 170          # pyttsx3 말하기 속도
+  tts_rate: 170          # pyttsx3 말하기 속도 (Windows 전용 — RPi의 gTTS는 미적용)
+  mic_device_index: null # null=기본 장치. USB 마이크가 기본이 아니면 scripts/test_mic.py 목록의 인덱스 지정
   log_path: logs/challenges.json
 
 # Flask 모니터링 대시보드

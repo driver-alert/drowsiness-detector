@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import random
 import re
+import sys
 import threading
 import time
 from collections import deque
@@ -52,6 +53,8 @@ class ArithmeticChallenge:
         self.operand_min = int(cfg.get("operand_min", 10))
         self.operand_max = int(cfg.get("operand_max", 99))
         self.tts_rate = int(cfg.get("tts_rate", 170))
+        idx = cfg.get("mic_device_index")
+        self.mic_device_index = int(idx) if idx is not None else None
 
     def _make_problem(self):
         """두 자리 덧셈/뺄셈 1개 생성 -> (발화 텍스트, 정답).
@@ -75,10 +78,32 @@ class ArithmeticChallenge:
 
     # --- TTS ---
     def _speak(self, text: str) -> None:
-        # run()에서 1회 생성한 엔진을 재사용. pyttsx3 2.99는 2번째 runAndWait가
-        # 무음으로 끝나는 버그가 있으나, 2.91에서는 재사용해도 정상 동작한다.
-        self._engine.say(text)
-        self._engine.runAndWait()
+        if sys.platform == "win32":
+            # run()에서 1회 생성한 엔진을 재사용. pyttsx3 2.99는 2번째 runAndWait가
+            # 무음으로 끝나는 버그가 있으나, 2.91에서는 재사용해도 정상 동작한다.
+            self._engine.say(text)
+            self._engine.runAndWait()
+        else:
+            self._speak_gtts(text)
+
+    def _speak_gtts(self, text: str) -> None:
+        """RPi(Linux)용 발화: gTTS로 mp3 생성 후 mpg123로 재생.
+
+        Linux의 pyttsx3(espeak 드라이버)는 한국어 음성이 없어 gTTS(온라인)를 쓴다.
+        STT도 Google 온라인이므로 네트워크 의존은 동일하다. (mpg123는 apt로 설치)
+        """
+        import subprocess
+        import tempfile
+
+        from gtts import gTTS
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            path = f.name
+        try:
+            gTTS(text=text, lang="ko").save(path)
+            subprocess.run(["mpg123", "-q", path], check=False)
+        finally:
+            Path(path).unlink(missing_ok=True)
 
     # --- STT ---
     def _listen(self, recognizer, mic):
@@ -115,11 +140,13 @@ class ArithmeticChallenge:
 
     def run(self) -> dict:
         """문제를 최대 max_problems회 출제/청취하고 결과 dict를 반환한다."""
-        import pyttsx3
         import speech_recognition as sr
 
-        self._engine = pyttsx3.init()  # 챌린지 1세트 동안 엔진 재사용
-        self._engine.setProperty("rate", self.tts_rate)
+        if sys.platform == "win32":
+            import pyttsx3
+
+            self._engine = pyttsx3.init()  # 챌린지 1세트 동안 엔진 재사용
+            self._engine.setProperty("rate", self.tts_rate)
 
         recognizer = sr.Recognizer()
         # adjust_for_ambient_noise는 조용한 방에서도 임계값을 과도하게 높여
@@ -128,7 +155,7 @@ class ArithmeticChallenge:
         recognizer.energy_threshold = 300
         recognizer.dynamic_energy_threshold = True
         print(f"[CHALLENGE] energy_threshold={recognizer.energy_threshold}")
-        mic = sr.Microphone()
+        mic = sr.Microphone(device_index=self.mic_device_index)
 
         problems: list[str] = []
         recognized: list = []
