@@ -38,6 +38,19 @@ event_log:
   output_path: logs/events.json
   log_stages: [ok, warn, danger]   # 기록할 단계. RPi 부하 우려 시 [warn, danger]로 축소
 
+# 졸음 각성 산수 챌린지: danger가 짧은 시간에 반복되면 음성 문제로 깨움
+challenge:
+  enabled: true
+  danger_count: 3        # 이 횟수만큼 danger 진입이
+  window_seconds: 60     # 이 시간(초) 안에 발생하면 출제
+  max_problems: 3        # 한 챌린지에서 출제(재출제 포함)할 최대 문제 수
+  answer_timeout: 7      # STT 1회 청취 제한 시간(초)
+  operand_min: 10        # 산수 피연산자 최소값 (두 자리수 연산)
+  operand_max: 49        # 산수 피연산자 최대값
+  tts_rate: 170          # pyttsx3 말하기 속도 (Windows 전용 — RPi의 gTTS는 미적용)
+  mic_device_index: null # null=기본 장치. USB 마이크가 기본이 아니면 scripts/test_mic.py 목록의 인덱스 지정
+  log_path: logs/challenges.json
+
 # Flask 모니터링 대시보드
 web:
   host: 0.0.0.0

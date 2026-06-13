@@ -59,6 +59,23 @@ python scripts/test_gpio.py            # LED/부저 배선 확인
 python -m src.run --source picamera     # 실제 카메라 + GPIO 실행
 ```
 
+### USB 마이크/스피커 (각성 챌린지 음성)
+
+```bash
+sudo apt install -y portaudio19-dev flac mpg123   # PyAudio 빌드 / STT flac / gTTS mp3 재생
+pip install -r requirements.txt -r requirements-rpi.txt
+
+arecord -l                         # USB 마이크 인식 확인
+aplay -l                           # USB 스피커 인식 확인
+# 기본 출력을 USB 스피커로: 데스크톱은 작업 표시줄 볼륨 아이콘에서 선택, 헤드리스는 raspi-config
+
+python scripts/test_mic.py         # 마이크 RMS·STT 확인 (다른 장치 시험: MIC_INDEX=n)
+python scripts/test_challenge.py   # TTS 출제 → STT 응답 전체 흐름
+```
+
+기본 장치가 USB 마이크가 아니면 `test_mic.py` 목록의 인덱스를 `config.yaml`의
+`challenge.mic_device_index`에 지정한다. 발화는 Windows에서 pyttsx3, RPi에서 gTTS(온라인)를 쓴다.
+
 ## 설정
 
 임계값·핀 번호·카메라/웹 설정은 [`config.yaml`](config.yaml)에서 조정한다.

@@ -3,6 +3,11 @@
 # (RPi 5에서는 RPi.GPIO 대신 gpiozero + lgpio 백엔드 사용)
 gpiozero
 lgpio
+gTTS              # 한국어 TTS (Linux의 pyttsx3/espeak는 한국어 미지원 → 챌린지 발화용)
+
+# USB 마이크/스피커(각성 챌린지 음성)용 시스템 패키지 — pip 설치 전에 필요:
+#   sudo apt install -y portaudio19-dev flac mpg123
+#   (portaudio19-dev: PyAudio 빌드 / flac: STT 인코딩, aarch64는 내장 바이너리 없음 / mpg123: gTTS mp3 재생)
 
 # 참고: 카메라(picamera2)는 Raspberry Pi OS 시스템 패키지로 제공된다.
 #   venv에서 사용하려면 `python3 -m venv --system-site-packages .venv` 로 생성하거나
