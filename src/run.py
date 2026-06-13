@@ -40,12 +40,12 @@ def build_source_and_alert(cfg: dict):
     return WebcamSource(cfg["camera"]), GpioAlert(cfg["gpio"])
 
 
-def start_dashboard(state: dict, cfg: dict) -> threading.Thread:
+def start_dashboard(state: dict, cfg: dict, frame_store: dict) -> threading.Thread:
     """Flask 대시보드를 백그라운드 스레드로 실행한다."""
     from .web.app import create_app
 
     web_cfg = cfg["web"]
-    app = create_app(state, cfg["event_log"]["output_path"])
+    app = create_app(state, cfg["event_log"]["output_path"], frame_store)
     thread = threading.Thread(
         target=app.run,
         kwargs={
@@ -61,6 +61,24 @@ def start_dashboard(state: dict, cfg: dict) -> threading.Thread:
     thread.start()
     print(f"[WEB] Dashboard: http://127.0.0.1:{web_cfg['port']} (bind: {web_cfg['host']})")
     return thread
+
+
+def update_frame_store(frame_store: dict, frame, label: str | None = None) -> None:
+    """Encode the latest camera frame as JPEG for the Flask /video stream."""
+    import cv2
+
+    preview = frame.copy()
+    if label:
+        cv2.rectangle(preview, (0, 0), (preview.shape[1], 38), (0, 0, 0), -1)
+        cv2.putText(preview, label, (12, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+    ok, encoded = cv2.imencode(".jpg", preview, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+    if not ok:
+        return
+
+    with frame_store["lock"]:
+        frame_store["jpeg"] = encoded.tobytes()
+        frame_store["updated"] = time.time()
 
 
 def main() -> None:
@@ -90,15 +108,17 @@ def main() -> None:
 
     # Flask 대시보드와 공유할 상태.
     state = {"stage": "ok", "ear": None, "pitch": None, "ts": None}
+    frame_store = {"jpeg": None, "updated": None, "lock": threading.Lock()}
     prev_stage = None
 
-    start_dashboard(state, cfg)
+    start_dashboard(state, cfg, frame_store)
 
     try:
         while True:
             frame = camera.read()
             if frame is None:
                 break
+            update_frame_store(frame_store, frame, "detecting")
 
             # --- Vision: 프레임 -> {ear, pitch, ts} ---
             landmarks = landmarker.detect(frame)
@@ -114,6 +134,11 @@ def main() -> None:
 
             # --- Logic: 단계 판단 ---
             stage = judge.update(vision)
+            update_frame_store(
+                frame_store,
+                frame,
+                f"{stage.upper()}  EAR={vision['ear']:.3f}  PITCH={vision['pitch']:.1f}",
+            )
 
             # --- Output: 경고 + 클립 저장 + 단계 전이 로그 ---
             alert.set_stage(stage)
