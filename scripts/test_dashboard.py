@@ -86,7 +86,7 @@ def main() -> None:
     )
     worker.start()
 
-    app = create_app(state, str(log_path))
+    app = create_app(state, str(log_path), "clips")
     print(f"Mock dashboard running: http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False, use_reloader=False)
 

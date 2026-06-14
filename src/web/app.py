@@ -6,9 +6,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 
-def create_app(state: dict, log_path: str):
+def create_app(state: dict, log_path: str, clip_dir: str = "clips"):
     """Flask 앱을 생성해 반환한다.
 
     Args:
@@ -20,9 +21,10 @@ def create_app(state: dict, log_path: str):
     Returns:
         flask.Flask 인스턴스.
     """
-    from flask import Flask, jsonify, render_template
+    from flask import Flask, jsonify, render_template, send_from_directory
 
     app = Flask(__name__)
+    clip_root = Path(clip_dir).resolve()
 
     @app.route("/")
     def index():
@@ -42,5 +44,8 @@ def create_app(state: dict, log_path: str):
         except (FileNotFoundError, ValueError):
             return jsonify([])
 
-    # TODO: MJPEG 영상 스트림(/video) 등 추가 라우트는 이후 단계에서.
+    @app.route("/clips/<path:filename>")
+    def clips(filename: str):
+        return send_from_directory(clip_root, filename, conditional=True)
+
     return app

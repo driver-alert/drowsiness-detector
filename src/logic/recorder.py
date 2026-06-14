@@ -21,7 +21,7 @@ class ClipRecorder:
         self.output_dir = cfg.get("output_dir", "clips")
         self.pre_seconds = float(cfg.get("pre_seconds", 3))
         self.post_seconds = float(cfg.get("post_seconds", 3))
-        self.fps = 20  # 카메라 fps와 대략 맞춤 (필요시 조정)
+        self.fps = int(cfg.get("fps", 30))  # 설정 파일의 FPS 사용
 
         os.makedirs(self.output_dir, exist_ok=True)
         self._pre_buffer = deque(maxlen=int(self.pre_seconds * self.fps))
@@ -39,7 +39,7 @@ class ClipRecorder:
                     self._finish()
 
     def save(self):
-        if self._writer is None:
+        if self._writer is None and self._pre_buffer:
             self._start(self._pre_buffer[-1])
             for f in self._pre_buffer:      # 직전 몇 초(pre-roll) 먼저 기록
                 self._writer.write(f)
@@ -51,8 +51,15 @@ class ClipRecorder:
     def _start(self, sample) -> None:
         h, w = sample.shape[:2]
         self._path = os.path.join(self.output_dir, time.strftime("danger_%Y%m%d_%H%M%S.mp4"))
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        # 웹 브라우저 재생 호환성을 위해 avc1(H.264) 사용 시도
+        fourcc = cv2.VideoWriter_fourcc(*"avc1")
         self._writer = cv2.VideoWriter(self._path, fourcc, self.fps, (w, h))
+
+        if not self._writer.isOpened():
+            # avc1 실패 시 mp4v로 폴백 (일부 브라우저에서 재생이 제한될 수 있음)
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            self._writer = cv2.VideoWriter(self._path, fourcc, self.fps, (w, h))
+
         self._post_left = int(self.post_seconds * self.fps)
 
     def _finish(self) -> None:

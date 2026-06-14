@@ -45,7 +45,7 @@ def start_dashboard(state: dict, cfg: dict) -> threading.Thread:
     from .web.app import create_app
 
     web_cfg = cfg["web"]
-    app = create_app(state, cfg["event_log"]["output_path"])
+    app = create_app(state, cfg["event_log"]["output_path"], cfg["recorder"]["output_dir"])
     thread = threading.Thread(
         target=app.run,
         kwargs={
